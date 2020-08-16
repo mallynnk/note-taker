@@ -5,13 +5,14 @@ const db = require('./db/db');
 const PORT = process.env.PORT || 3001;
 const app = express();
 const { json } = require("body-parser");
-const uuid = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const { timeStamp } = require('console')
 
 app.use(express.static(path.join(__dirname, '/public')));
 
 //parse incoming string / data
 app.use(express.urlencoded({ extended: true }));
+
 //parse incoming JSON 
 app.use(express.json());
 
@@ -27,16 +28,14 @@ app.get('/notes', (req, res) => {
 
 //working route to db.json 
 app.get('/api/notes', (req, res) => { 
-    console.log(db);
     res.json(db);
 })
 
 app.post('/api/notes', (req, res) => { 
     //add the ID property
     const newNote = req.body
-    newNote.id = uuid.v4();
-    console.log(newNote);
-    db.push(req.body)
+    newNote.id = uuidv4();
+    db.push(newNote)
 
     fs.writeFile('db/db.json', JSON.stringify(db), function(err, data){
         if(err) {
@@ -47,23 +46,20 @@ app.post('/api/notes', (req, res) => {
     })
 });
 
-//remove the note with the id property & rewrite the notes 
+//remove the note with the id property & rewrite the notes to exclude deleted note
 app.delete('/api/notes/:id', (req, res) => { 
-    const deletedNote = (req.params.id);
+   
+    const deletedNoteId = (req.params.id);
 
-    //filter over the database object & return item 
-        const filterDb =  db.filter(function(obj) {
-        return obj.id !== deletedNote;
-    });
-
-    //loop over database object and splice out deleted note
-    for (var i=0; i < db.length; i++) {
-        if (filterDb.indexOf(deletedNote) !== -1) {
-            filterDb.splice(i, 1);
+    const index = db.findIndex(note => note.id === deletedNoteId)
+ 
+    //splice out deleted note
+        if (index !== -1) {
+            db.splice(index, 1);
         }
-    }
+
     //write json object's new values to the database
-    fs.writeFile('db/db.json', JSON.stringify(filterDb), function(err,data) { 
+    fs.writeFile('db/db.json', JSON.stringify(db), function(err,data) { 
         if(err) {
             throw err 
         } else {
